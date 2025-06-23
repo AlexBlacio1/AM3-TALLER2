@@ -14,27 +14,85 @@ void main() async {
   runApp(const Clase2());
 }
 
-class Clase2 extends StatelessWidget {
+final ThemeData temaClaro = ThemeData.light().copyWith(
+  primaryColor: const Color(0xFFE50914),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Color(0xFFE50914),
+    foregroundColor: Colors.white,
+  ),
+);
+
+final ThemeData temaOscuro = ThemeData.dark().copyWith(
+  primaryColor: const Color(0xFFE50914),
+  scaffoldBackgroundColor: const Color(0xFF121212),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Color(0xFF1F1F1F),
+    foregroundColor: Colors.white,
+  ),
+  colorScheme: ColorScheme.dark(
+    primary: const Color(0xFFE50914),
+    secondary: Colors.redAccent,
+  ),
+  textTheme: const TextTheme(
+    bodyLarge: TextStyle(color: Colors.white70),
+    bodyMedium: TextStyle(color: Colors.white70),
+  ),
+);
+
+class Clase2 extends StatefulWidget {
   const Clase2({super.key});
 
   @override
+  State<Clase2> createState() => _Clase2State();
+}
+
+class _Clase2State extends State<Clase2> {
+  bool isDarkMode = true;
+
+  void _toggleTheme() {
+    setState(() {
+      isDarkMode = !isDarkMode;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const MaterialApp(home: Cuerpo());
+    return MaterialApp(
+      title: 'APP-PIRATA',
+      theme: temaClaro,
+      darkTheme: temaOscuro,
+      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      debugShowCheckedModeBanner: false,
+      home: Cuerpo(
+        isDarkMode: isDarkMode,
+        toggleTheme: _toggleTheme,
+      ),
+    );
   }
 }
 
 class Cuerpo extends StatelessWidget {
-  const Cuerpo({super.key});
+  final bool isDarkMode;
+  final VoidCallback toggleTheme;
+
+  const Cuerpo({
+    super.key,
+    required this.isDarkMode,
+    required this.toggleTheme,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("MAIN"),
+        title: const Text("App - Pirata"),
         actions: [
           IconButton(
-            onPressed: () => {},
-            icon: const Icon(Icons.add_box_outlined),
+            onPressed: toggleTheme,
+            icon: Icon(
+              isDarkMode ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+            ),
+            tooltip: isDarkMode ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro',
           ),
         ],
       ),

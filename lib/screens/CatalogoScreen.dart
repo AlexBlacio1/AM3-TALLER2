@@ -1,59 +1,127 @@
+import 'package:flutter/material.dart';
 import 'package:clase2/navigation/drawer.dart';
 import 'package:clase2/screens/PeliculasScreen.dart';
-import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class Catalogo extends StatelessWidget {
+class Catalogo extends StatefulWidget {
   const Catalogo({super.key});
 
-  final List<Map<String, String>> peliculas = const [
-    {
-      'titulo': 'Pirata del Caribe',
-      'imagen': 'https://es.web.img3.acsta.net/c_310_420/pictures/14/03/25/11/14/498694.jpg',
-      'descripcion': 'Lorem ipsum dolor sit amet, aventuras en alta mar...'
-    },
-    {
-      'titulo': 'El Tesoro Fantasma',
-      'imagen': 'https://images.cdn1.buscalibre.com/fit-in/360x360/83/36/83363b01a59df1f71adc0e46e5b45e92.jpg',
-      'descripcion': 'Una historia épica llena de misterios y batallas.'
-    },
-    {
-      'titulo': 'Lilo y Stich',
-      'imagen': 'https://m.media-amazon.com/images/S/pv-target-images/82358a68004ba7346674d1b392509258eaef1add6192f032454a619e8e51b9a0.jpg',
-      'descripcion': 'Lorem ipsum dolor sit amet.'
+  @override
+  State<Catalogo> createState() => _CatalogoState();
+}
+
+class _CatalogoState extends State<Catalogo> {
+  final supabase = Supabase.instance.client;
+  List<Map<String, dynamic>> peliculas = [];
+  bool loading = true;
+  String? filtroGenero;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPeliculas();
+  }
+
+  Future<void> _cargarPeliculas() async {
+    setState(() {
+      loading = true;
+    });
+
+    try {
+      var query = supabase.from('peliculas').select();
+      if (filtroGenero != null && filtroGenero!.isNotEmpty) {
+        query = query.eq('genero', filtroGenero!);
+      }
+
+      final response = await query;
+      setState(() {
+        peliculas = List<Map<String, dynamic>>.from(response);
+        loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar películas: $e')),
+      );
     }
-  ];
+  }
+
+  void _onGeneroSeleccionado(String? genero) {
+    setState(() {
+      filtroGenero = genero;
+    });
+    _cargarPeliculas();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Catálogo de Películas")),
-      drawer: const MiDrawer(),
-      body: ListView.builder(
-        itemCount: peliculas.length,
-        itemBuilder: (context, index) {
-          final pelicula = peliculas[index];
-          return Card(
-            margin: const EdgeInsets.all(10),
-            child: ListTile(
-              leading: Image.network(pelicula['imagen']!, width: 50, fit: BoxFit.cover),
-              title: Text(pelicula['titulo']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(pelicula['descripcion']!),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => Peliculas(
-                      titulo: pelicula['titulo']!,
-                      imagen: pelicula['imagen']!,
-                      descripcion: pelicula['descripcion']!,
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
+      drawer: MiDrawer(onGeneroSeleccionado: _onGeneroSeleccionado),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : peliculas.isEmpty
+              ? const Center(child: Text('No hay películas para mostrar'))
+              : ListView.builder(
+                  itemCount: peliculas.length,
+                  itemBuilder: (context, index) {
+                    final pelicula = peliculas[index];
+                    return Card(
+                      margin: const EdgeInsets.all(10),
+                      child: ListTile(
+                        leading: SizedBox(
+                          width: 60,
+                          height: 60,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              pelicula['imagen_url'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.broken_image),
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return const Center(child: CircularProgressIndicator());
+                              },
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          pelicula['titulo'],
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              pelicula['genero'] ?? '',
+                              style: const TextStyle(fontStyle: FontStyle.italic),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(pelicula['descripcion']),
+                          ],
+                        ),
+                        isThreeLine: true,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => Peliculas(
+                                titulo: pelicula['titulo'],
+                                imagen: pelicula['imagen_url'],
+                                descripcion: pelicula['descripcion'],
+                                genero: pelicula['genero'],
+                                videoFilename: pelicula['video_filename'],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }
